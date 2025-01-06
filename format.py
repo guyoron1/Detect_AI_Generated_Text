@@ -1,0 +1,1 @@
+# To format data to competition format - including creation of prompts based on promptless ones
