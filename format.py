@@ -1,11 +1,14 @@
 # To format data to competition format - including creation of prompts based on promptless ones
+import os
+
 import pandas as pd
 
 import fetch_data
 
 DATASET_NAME_TO_PATH = {
     'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
-    'persuade': './external_sources/persuade'
+    'persuade': './external_sources/persuade/persuade_corpus_2.0_train.csv',
+    'fpe': './external_sources/fpe'
 }
 
 REQUIRED_COLS = (
@@ -27,24 +30,58 @@ def format_dataset(dataset_name):
 
 
 def dataset_to_pandas(dataset_name, path):
-    if path.endswith(".csv"):
-        df = pd.read_csv(path)
-    else:
-        pass
     # Divide into cases by datasets.
     if dataset_name == 'daigt':
-        df = format_daigt_to_df(df)
+        df = format_daigt_to_df(path)
+    elif dataset_name == 'persuade':
+        df = format_persuade_to_df(path)
+    elif dataset_name == 'fpe':
+        df = format_fpe_to_df(path)
 
-def format_daigt_to_df(df: pd.DataFrame):
-    df = df.rename(columns={'text':'assignment','label':'generated'})
+    df = df.drop_duplicates(subset='essay_text')
+    return df
+
+def format_daigt_to_df(path):
+    df = pd.read_csv(path)
+    df = df.rename(columns={'text':'essay_text','label':'generated'})
     df = df[df['RDizzl3_seven'] == True] # Filtering present in Daigt2.0 that says whether the essay was written in response to an original prompt from the challange.
     df = df.drop(columns=['RDizzl3_seven','source'])
     mapping = fetch_data.map_prompt_name_to_prompt_text_persuade()
     df['prompt_text'] = df['prompt_name'].map(mapping)
     return df
 
+def format_persuade_to_df(path):
+    df = pd.read_csv(path)
+    df = df.rename(columns={'full_text':'essay_text','assignment':'prompt_text'})
+    df = df[['prompt_name','prompt_text','essay_text']]
+    df['generated'] = 0
+    return df
 
-def add_prompts(df: pd.DataFrame): #todo: guy
+def format_fpe_to_df(path):
+    dataframes = {}
+    for file in os.listdir(path):
+        file_path = os.path.join(path, file)
+        df_name = os.path.splitext(file)[0]  # Use the filename (without extension) as the key
+        if file.endswith(".csv"):
+            if df_name == 't5_essays_processed' or df_name == 'mlm_essays_processed':
+                dataframes[df_name] = pd.read_csv(file_path)
+        elif file.endswith(".parquet"):
+            df = pd.read_parquet(file_path)
+            #todo: parquet files. are they synthetic?
+
+    for name, df in dataframes.items():
+        if name == 't5_essays_processed':
+            df = df[['essay_text']]
+        elif name == 'mlm_essays_processed':
+            df = df.rename(columns={'prompt':'prompt_text'})
+            df = df[['essay_text', 'prompt_text']]
+            print('a')
+
+
+
+
+
+def add_prompts(df: pd.DataFrame): #do this for all df, check whether there is NaN in any of the prompt columns (also need to fill in the prompt name, consistently..)
     pass
 
 def add_prompt_texts(df: pd.DataFrame):
@@ -52,4 +89,5 @@ def add_prompt_texts(df: pd.DataFrame):
 
 
 if __name__ == '__main__':
-    dataset_to_pandas('daigt', DATASET_NAME_TO_PATH['daigt'])
+    df = dataset_to_pandas('fpe', DATASET_NAME_TO_PATH['fpe'])
+    print('www')
