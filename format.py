@@ -2,6 +2,7 @@
 import os
 
 import pandas as pd
+import numpy as np
 
 import fetch_data
 
@@ -25,7 +26,7 @@ def format_dataset(dataset_name):
     path = DATASET_NAME_TO_PATH[dataset_name]
     plain_df = dataset_to_pandas(dataset_name, path)
     df_with_prompts = add_prompts(plain_df) # Fill in prompts with LLM pipeline (if needed)
-    df_with_prompts_and_prompt_texts = add_prompt_texts(df_with_prompts) # Fill in missing texts for prompts
+    df_with_prompts_and_prompt_texts = add_prompt_names(df_with_prompts) # Fill in missing titles for prompts
 
 
 
@@ -65,29 +66,58 @@ def format_fpe_to_df(path):
         if file.endswith(".csv"):
             if df_name == 't5_essays_processed' or df_name == 'mlm_essays_processed':
                 dataframes[df_name] = pd.read_csv(file_path)
-        elif file.endswith(".parquet"):
+        elif file.endswith(".parquet") and not(file.startswith('cv')):
             df = pd.read_parquet(file_path)
-            #todo: parquet files. are they synthetic?
+            dataframes[df_name] = df
 
+    # Format datasets
     for name, df in dataframes.items():
         if name == 't5_essays_processed':
             df = df[['essay_text']]
+            df['generated'] = 1
         elif name == 'mlm_essays_processed':
             df = df.rename(columns={'prompt':'prompt_text'})
             df = df[['essay_text', 'prompt_text']]
+            df['generated'] = 1
+        elif name.startswith("fpe"):
+            df = df[['essay_text']]
+            df['generated'] = 0
+        else:
             print('a')
+        dataframes[name] = df
+    result = pd.concat(
+        [df.assign(source=key) for key, df in dataframes.items()],
+        ignore_index=True,
+        sort=False  # Align columns automatically, filling missing ones with NaN
+    )
+    return result
 
 
 
 
 
-def add_prompts(df: pd.DataFrame): #do this for all df, check whether there is NaN in any of the prompt columns (also need to fill in the prompt name, consistently..)
+
+
+def add_prompts(df: pd.DataFrame):
+    #do this for all df, check whether there is NaN in any of the prompt columns (also need to fill in the prompt name, consistently..)
+    fill_all = False
+    if 'prompt_text' not in df.columns:
+        fill_all = True
+    for _, row in df.iterrows():
+        if pd.isna(row['prompt_text']) or fill_all:
+            fill_prompt_text_from_llm(row) # In place?
+    return df
+
+def fill_prompt_text_from_llm(row: pd.Series):
+    #todo: add guy's functionality
     pass
 
-def add_prompt_texts(df: pd.DataFrame):
-    pass
+def add_prompt_names(df: pd.DataFrame):
+    unique_prompts = df['prompt_text']
+    prompts_to_names_mapping = fill_prompt_name_given_prompt_text_with_llm(unique_prompts) # Dictionary.
 
+def fill_prompt_name_given_prompt_text_with_llm(unique_prompts: np.ndarray):
+    return dict()
 
 if __name__ == '__main__':
-    df = dataset_to_pandas('fpe', DATASET_NAME_TO_PATH['fpe'])
-    print('www')
+    df = format_dataset('fpe')
