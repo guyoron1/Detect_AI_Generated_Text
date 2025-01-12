@@ -1,7 +1,5 @@
-from transformers import pipeline
 
 # Initialize the global pipeline once for efficiency
-global_pipe = pipeline("text2text-generation", model="google/flan-t5-large")
 
 
 def generate_prompt_for_text(text,
