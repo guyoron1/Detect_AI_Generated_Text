@@ -1,4 +1,5 @@
 # To format data to competition format - including creation of prompts based on promptless ones
+import json
 import os
 from transformers import pipeline
 from tqdm import tqdm
@@ -9,8 +10,8 @@ import fetch_data
 GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large")
 
 DATASET_NAME_TO_PATH = {
-    'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
-    'persuade': './external_sources/persuade/persuade_corpus_2.0_train.csv',
+    #'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
+    #'persuade': './external_sources/persuade/persuade_corpus_2.0_train.csv',
     'fpe': './external_sources/fpe'
 }
 
@@ -23,7 +24,10 @@ REQUIRED_COLS = (
     )
 
 
-def format_all_datasets():
+def format_all_datasets(read_from_existing:str):
+    if read_from_existing: #read_from_existing is path
+        df = pd.read_csv(read_from_existing)
+        return df
     all_dataframes = []
     for name, _ in DATASET_NAME_TO_PATH.items():
         df = format_dataset(name)
@@ -61,6 +65,7 @@ def format_daigt_to_df(path):
     df = df.drop(columns=['RDizzl3_seven','source'])
     mapping = fetch_data.map_prompt_name_to_prompt_text_persuade()
     df['prompt_text'] = df['prompt_name'].map(mapping)
+    df['source'] = 'daigt'
     return df
 
 def format_persuade_to_df(path):
@@ -68,6 +73,7 @@ def format_persuade_to_df(path):
     df = df.rename(columns={'full_text':'essay_text','assignment':'prompt_text'})
     df = df[['prompt_name','prompt_text','essay_text']]
     df['generated'] = 0
+    df['source'] = 'persuade'
     return df
 
 def format_fpe_to_df(path):
@@ -193,5 +199,81 @@ def generate_prompts_for_texts(texts, pipe, max_input_tokens=512, batch_size=16)
     return [g['generated_text'].strip() for g in generated]
 
 
+def write_mistral_format(dataset: pd.DataFrame, output_file: str):
+    """
+    Writes the dataset into the Mistral format as a JSON file.
+
+    Args:
+        dataset (pd.DataFrame): The input dataset with columns
+                                'prompt_text', 'essay_text', 'generated', and 'source'.
+        output_file (str): Path to the output JSON file.
+    """
+    mistral_data = []
+
+    for _, row in dataset.iterrows():
+        # Determine the label based on the 'generated' column
+        label = "LLM" if row['generated'] == 1 else "Human"
+
+        # Construct the input string
+        input_text = f"Prompt Text: {row['prompt_text']}. Essay Text: {row['essay_text']}"
+
+        # Add the entry to the Mistral data list
+        mistral_data.append({
+            "input": input_text,
+            "label": label
+        })
+
+    # Write the JSON data to the specified output file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(mistral_data, f, ensure_ascii=False, indent=4)
+
+
+
+def sample_by_percentages(df: pd.DataFrame, percentages: dict) -> pd.DataFrame:
+    """
+    Samples the dataset based on the given percentages for each source.
+
+    Args:
+        df (pd.DataFrame): The input dataset with a 'source' column.
+        percentages (dict): A dictionary mapping sources to their respective percentages (0-1).
+
+    Returns:
+        pd.DataFrame: A new DataFrame with the sampled data.
+    """
+    sampled_data = []
+
+    for source, percentage in percentages.items():
+        # Filter rows belonging to the current source
+        source_df = df[df['source'] == source]
+
+        # Calculate the number of samples
+        num_samples = int(len(source_df) * percentage)
+
+        # Sample the data
+        sampled_df = source_df.sample(n=num_samples, random_state=42)  # Setting random_state for reproducibility
+
+        # Add the sampled data to the list
+        sampled_data.append(sampled_df)
+
+    # Concatenate all sampled dataframes
+    result_df = pd.concat(sampled_data, ignore_index=True)
+    return result_df
+
+
 if __name__ == '__main__':
-    df = format_all_datasets()
+    #df = format_all_datasets()
+    data = {
+        "prompt_text": [
+            "What are the benefits of exercise?",
+            "Describe the importance of technology in education."
+        ],
+        "essay_text": [
+            "Exercise improves mental and physical health, helping people lead a balanced life.",
+            "Technology enhances learning by providing access to resources and enabling remote education."
+        ],
+        "generated": [0, 1],  # 0 for Human, 1 for LLM
+        "source": ["human_dataset", "llm_dataset"]
+    }
+
+    df = pd.DataFrame(data)
+    write_mistral_format(df, 'output.json')
