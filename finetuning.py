@@ -19,7 +19,6 @@ def pull_kaggle_example_data():
     return df
 
 
-
 def finetune():
     # Perform finetuning and save model to known location with indicative name
     # "./models"

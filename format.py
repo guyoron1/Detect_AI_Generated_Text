@@ -8,6 +8,7 @@ import numpy as np
 
 import fetch_data
 GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large")
+dataset_version = "v17-01-2025" # Versioning of dataset.
 
 DATASET_NAME_TO_PATH = {
     #'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
@@ -26,7 +27,7 @@ REQUIRED_COLS = (
 
 def format_all_datasets(read_from_existing:str):
     if read_from_existing: #read_from_existing is path
-        df = pd.read_csv(read_from_existing)
+        df = load_datasets_from_pickle(read_from_existing)
         return df
     all_dataframes = []
     for name, _ in DATASET_NAME_TO_PATH.items():
@@ -34,6 +35,8 @@ def format_all_datasets(read_from_existing:str):
         all_dataframes.append(df)
     concatenated_df = pd.concat(all_dataframes, ignore_index=True)
     concatenated_df.reset_index(drop=True, inplace=True)
+    dataset_name = f"./data/full_data_{dataset_version}.csv"
+    concatenated_df.to_pickle(dataset_name, index=False)
     return concatenated_df
 
 def format_dataset(dataset_name):
@@ -260,20 +263,11 @@ def sample_by_percentages(df: pd.DataFrame, percentages: dict) -> pd.DataFrame:
     return result_df
 
 
-if __name__ == '__main__':
-    #df = format_all_datasets()
-    data = {
-        "prompt_text": [
-            "What are the benefits of exercise?",
-            "Describe the importance of technology in education."
-        ],
-        "essay_text": [
-            "Exercise improves mental and physical health, helping people lead a balanced life.",
-            "Technology enhances learning by providing access to resources and enabling remote education."
-        ],
-        "generated": [0, 1],  # 0 for Human, 1 for LLM
-        "source": ["human_dataset", "llm_dataset"]
-    }
+def load_datasets_from_pickle(filename):
+    path = f"./data/{filename}.csv"
+    unpickled_df = pd.read_pickle(path)
+    return unpickled_df
 
-    df = pd.DataFrame(data)
-    write_mistral_format(df, 'output.json')
+
+if __name__ == '__main__':
+    format_all_datasets()
