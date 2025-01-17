@@ -12,8 +12,7 @@
 #SBATCH --cpus-per-task=4 # CPU cores per process
 #SBATCH --gpus=1 # GPUs in total
 
-bash -i -c "source /home/tkoren/mldaw2425/imryziv/miniconda3/etc/profile.d/conda.sh && conda activate base"
-
+bash -i -c "source /home/tkoren/mldaw2425/imryziv/miniconda3/etc/profile.d/conda.sh && conda activate base && pip install pytorch"
 
 python format.py
 
