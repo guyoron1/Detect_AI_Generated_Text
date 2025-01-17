@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #SBATCH --job-name=imryziv-create-datasets
-#SBATCH --output=/home/tkoren/mldaworkshop/imryziv/imryziv-create-datasets-%j.out # redirect stdout
-#SBATCH --error=/home/tkoren/mldaworkshop/imryziv/imryziv-create-datasets-%j.err # redirect stderr
+#SBATCH --output=/home/tkoren/mldaw2425/imryziv/slurm-logs/imryziv-create-datasets-%j.out # redirect stdout
+#SBATCH --error=/home/tkoren/mldaw2425/imryziv/slurm-logs/imryziv-create-datasets-%j.err # redirect stderr
 #SBATCH --partition=studentkillable
 #SBATCH --time=1000
 #SBATCH --signal=USR1@120 # how to end job when time’s up
