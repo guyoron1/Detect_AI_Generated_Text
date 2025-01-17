@@ -5,7 +5,7 @@ from transformers import pipeline
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
-
+from loguru import logger
 import fetch_data
 GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large")
 dataset_version = "v17-01-2025" # Versioning of dataset.
@@ -26,11 +26,13 @@ REQUIRED_COLS = (
 
 
 def format_all_datasets(read_from_existing:str):
+    logger.debug('Running format all datasets.')
     if read_from_existing: #read_from_existing is path
         df = load_datasets_from_pickle(read_from_existing)
         return df
     all_dataframes = []
     for name, _ in DATASET_NAME_TO_PATH.items():
+        logger.debug(f'Formatting {name}.')
         df = format_dataset(name)
         all_dataframes.append(df)
     concatenated_df = pd.concat(all_dataframes, ignore_index=True)
@@ -45,6 +47,7 @@ def format_dataset(dataset_name):
     """
     path = DATASET_NAME_TO_PATH[dataset_name]
     plain_df = dataset_to_pandas(dataset_name, path)
+    logger.debug(f'Adding prompts to {dataset_name}.')
     df_with_prompts = add_prompts(plain_df) # Fill in prompts with LLM pipeline (if needed)
     return df_with_prompts
 

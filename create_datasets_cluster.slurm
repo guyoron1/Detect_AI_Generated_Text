@@ -12,9 +12,11 @@
 #SBATCH --cpus-per-task=4 # CPU cores per process
 #SBATCH --gpus=1 # GPUs in total
 
-source /home/tkoren/mldaw2425/imryziv/Detect_AI_Generated_Text/venv/bin/activate
+source /home/tkoren/mldaw2425/imryziv/miniconda3/bin/activate
+conda activate base
 
-python
+
+python format.py
 
 
 
