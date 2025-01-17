@@ -139,5 +139,4 @@ def fetch_gpt2_data():
 
 
 if __name__ == '__main__':
-    a = map_prompt_name_to_prompt_text_persuade()
-    print('what')
+    download_all_kaggle_datasets()
