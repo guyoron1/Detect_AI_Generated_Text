@@ -25,7 +25,7 @@ REQUIRED_COLS = (
     )
 
 
-def format_all_datasets(read_from_existing:str):
+def format_all_datasets(read_from_existing = None):
     logger.debug('Running format all datasets.')
     if read_from_existing: #read_from_existing is path
         df = load_datasets_from_pickle(read_from_existing)

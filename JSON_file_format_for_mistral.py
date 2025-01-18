@@ -1,6 +1,7 @@
 import json
 import pandas as pd
-from Detect_AI_Generated_Text.format import format_all_datasets
+from format import format_all_datasets
+from sample_data_frame import df
 
 
 def write_mistral_format(dataset: pd.DataFrame, output_file: str):
@@ -35,40 +36,19 @@ def write_mistral_format(dataset: pd.DataFrame, output_file: str):
 # Example usage
 if __name__ == "__main__":
     # Assuming `df` is the formatted DataFrame obtained from `format_all_datasets()`
-    df = format_all_datasets()
+    #df = format_all_datasets()
+    # Create a small example DataFrame
 
-    # Path to the output JSON file
-    output_file_path = "mistral_formatted_data.json"
+    # Convert the dictionary to a DataFrame
+    example_df = df
 
-    # Write the dataset into the required format
-    write_mistral_format(df, output_file_path)
+    # Display the DataFrame
+    #print(example_df)
 
-    print(f"Dataset has been written to {output_file_path} in Mistral format.")
+    # Run the write_mistral_format function on the example DataFrame
+    output_file_path = "example_mistral_formatted.json"
+    write_mistral_format(example_df, output_file_path)
 
-import pandas as pd
+    print(f"Example dataset has been written to {output_file_path}.")
 
-# Create a small example DataFrame
-data = {
-    "prompt_text": [
-        "What are the benefits of exercise?",
-        "Describe the importance of technology in education."
-    ],
-    "essay_text": [
-        "Exercise improves mental and physical health, helping people lead a balanced life.",
-        "Technology enhances learning by providing access to resources and enabling remote education."
-    ],
-    "generated": [0, 1],  # 0 for Human, 1 for LLM
-    "source": ["human_dataset", "llm_dataset"]
-}
 
-# Convert the dictionary to a DataFrame
-example_df = pd.DataFrame(data)
-
-# Display the DataFrame
-print(example_df)
-
-# Run the write_mistral_format function on the example DataFrame
-output_file_path = "example_mistral_formatted.json"
-write_mistral_format(example_df, output_file_path)
-
-print(f"Example dataset has been written to {output_file_path}.")
