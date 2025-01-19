@@ -205,34 +205,6 @@ def generate_prompts_for_texts(texts, pipe, max_input_tokens=512, batch_size=16)
     return [g['generated_text'].strip() for g in generated]
 
 
-def write_mistral_format(dataset: pd.DataFrame, output_file: str):
-    """
-    Writes the dataset into the Mistral format as a JSON file.
-
-    Args:
-        dataset (pd.DataFrame): The input dataset with columns
-                                'prompt_text', 'essay_text', 'generated', and 'source'.
-        output_file (str): Path to the output JSON file.
-    """
-    mistral_data = []
-
-    for _, row in dataset.iterrows():
-        # Determine the label based on the 'generated' column
-        label = "LLM" if row['generated'] == 1 else "Human"
-
-        # Construct the input string
-        input_text = f"Prompt Text: {row['prompt_text']}. Essay Text: {row['essay_text']}"
-
-        # Add the entry to the Mistral data list
-        mistral_data.append({
-            "input": input_text,
-            "label": label
-        })
-
-    # Write the JSON data to the specified output file
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(mistral_data, f, ensure_ascii=False, indent=4)
-
 
 
 def sample_by_percentages(df: pd.DataFrame, percentages: dict) -> pd.DataFrame:
