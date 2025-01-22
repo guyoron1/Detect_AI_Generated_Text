@@ -69,15 +69,12 @@ def download_kaggle_dataset(dataset_url_or_identifier: str, download_path: str):
     if not os.path.exists(download_path):
         os.makedirs(download_path, exist_ok=True)
 
-        try:
-            # Use the Kaggle API to download the dataset
-            kaggle.api.dataset_download_files(dataset_identifier, path=download_path, unzip=True)
-            print(f"Dataset downloaded and extracted to {download_path}")
-        except kaggle.rest.ApiException as e:
-            print(f"Failed to download dataset '{dataset_identifier}': {e}")
-    else:
-        logger.debug(f"Dataset {dataset_identifier} already downloaded, skipping.")
-
+    try:
+        # Use the Kaggle API to download the dataset
+        kaggle.api.dataset_download_files(dataset_identifier, path=download_path, unzip=True)
+        print(f"Dataset downloaded and extracted to {download_path}")
+    except kaggle.rest.ApiException as e:
+        print(f"Failed to download dataset '{dataset_identifier}': {e}")
 
 def download_all_kaggle_datasets():
     logger.debug("Downloading Kaggle datasets to data dir.")
