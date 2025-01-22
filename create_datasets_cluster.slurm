@@ -12,6 +12,7 @@
 #SBATCH --cpus-per-task=4 # CPU cores per process
 #SBATCH --gpus=1 # GPUs in total
 
+export HF_HOME=/home/tkoren/mldaw2425/imryziv/huggingface_cache # Disk quota in regular home is exceeded
 # Load Miniconda and activate the environment
 echo "Activating Conda environment..."
 source /home/tkoren/mldaw2425/imryziv/miniconda3/etc/profile.d/conda.sh || { echo "Failed to source Conda."; exit 1; }
