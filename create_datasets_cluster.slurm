@@ -24,6 +24,6 @@ pip install --quiet torch || { echo "Failed to install PyTorch."; exit 1; }
 
 # Run the Python script
 echo "Running format.py..."
-python format.py || { echo "Python script failed."; exit 1; }
+python format.py --download_kaggle || { echo "Python script failed."; exit 1; }
 
 echo "Job completed successfully!"

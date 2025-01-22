@@ -1,4 +1,5 @@
 # To format data to competition format - including creation of prompts based on promptless ones
+import argparse
 import json
 import os
 from transformers import pipeline
@@ -245,4 +246,8 @@ def load_datasets_from_pickle(filename):
 
 
 if __name__ == '__main__':
+    argparser = argparse.ArgumentParser()
+    args = argparser.parse_args()
+    if args.download_kaggle:
+        fetch_data.download_all_kaggle_datasets()
     format_all_datasets()
