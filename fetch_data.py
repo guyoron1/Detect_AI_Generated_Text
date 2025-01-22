@@ -4,7 +4,6 @@ import kaggle
 import requests
 from tqdm import tqdm
 from loguru import logger
-import gdown
 import pandas as pd
 
 DATASET_TYPES = ('train', 'test', 'valid')
