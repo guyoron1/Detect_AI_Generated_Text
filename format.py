@@ -247,6 +247,11 @@ def load_datasets_from_pickle(filename):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "--download_kaggle",
+        action = 'store_true',
+        default = False,
+    )
     args = argparser.parse_args()
     if args.download_kaggle:
         fetch_data.download_all_kaggle_datasets()
