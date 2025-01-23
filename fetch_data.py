@@ -8,7 +8,7 @@ import pandas as pd
 
 DATASET_TYPES = ('train', 'test', 'valid')
 HOME = os.getcwd()
-PERSUADE_DATA_PATH = "./external_sources/persuade"
+PERSUADE_DATA_PATH = './external_sources/persuade/persuade_corpus_2.0_train.csv'
 OUTFOX_DATA_PATH = os.path.join(HOME, "external_sources/OUTFOX/data/")
 KAGGLE_DATASETS = [
     {
