@@ -5,11 +5,10 @@ import os
 from transformers import pipeline
 from tqdm import tqdm
 import pandas as pd
-import torch
 import numpy as np
 from loguru import logger
 import fetch_data
-GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large", device=0) # Added cuda.
+GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large")
 dataset_version = "v17-01-2025" # Versioning of dataset.
 
 DATASET_NAME_TO_PATH = {
@@ -40,7 +39,7 @@ def format_all_datasets(read_from_existing = None):
     concatenated_df = pd.concat(all_dataframes, ignore_index=True)
     concatenated_df.reset_index(drop=True, inplace=True)
     dataset_name = f"./data/full_data_{dataset_version}.csv"
-    concatenated_df.to_pickle(dataset_name)
+    concatenated_df.to_pickle(dataset_name, index=False)
     return concatenated_df
 
 def format_dataset(dataset_name):
@@ -83,6 +82,7 @@ def format_persuade_to_df(path):
     df['generated'] = 0
     df['source'] = 'persuade'
     return df
+
 
 def format_fpe_to_df(path):
     dataframes = {}
@@ -247,10 +247,6 @@ def load_datasets_from_pickle(filename):
 
 
 if __name__ == '__main__':
-    if torch.cuda.is_available():
-        logger.debug("CUDA is available. Running on GPU:", torch.cuda.get_device_name(0))
-    else:
-        logger.debug("CUDA is not available. Running on CPU.")
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
         "--download_kaggle",
@@ -260,4 +256,28 @@ if __name__ == '__main__':
     args = argparser.parse_args()
     if args.download_kaggle:
         fetch_data.download_all_kaggle_datasets()
-    format_all_datasets()
+
+    formatted_fpe_df = format_fpe_to_df('./external_sources/fpe')
+    formatted_fpe_df.to_csv("./data/formatted_fpe_data.csv", index=False)
+    # Step 1: Filter for generated essays and ensure prompt_text is not empty or blank
+    generated_essays_df = formatted_fpe_df[
+        (formatted_fpe_df['generated'] == 1) &  # Only generated essays
+        (formatted_fpe_df['prompt_text'].notnull()) &  # Remove rows with NaN in 'prompt_text'
+        (formatted_fpe_df['prompt_text'].str.strip() != "")  # Remove rows with blank/empty prompt_text
+        ]
+    # Step 2: Randomly sample 10,000 rows (or fewer if there aren't enough)
+    num_samples = min(10000, len(generated_essays_df))
+    sampled_generated_essays_df = generated_essays_df.sample(n=num_samples, random_state=42)
+
+    # Step 3: Save the filtered dataset to a new file (optional)
+    sampled_generated_essays_df.to_csv("./data/filtered_generated_essays_with_prompt.csv", index=False)
+
+    df = format_persuade_to_df(fetch_data.PERSUADE_DATA_PATH)
+
+    # Filter 5,000 random samples
+    filtered_df = df.sample(n=5000, random_state=42)
+
+    # Save to a new file
+    filtered_df.to_csv("./external_sources/persuade/filtered_persuade_data.csv", index=False)
+    print("Filtered data saved to './external_sources/persuade/filtered_persuade_data.csv''")
+    #format_all_datasets()
