@@ -5,10 +5,11 @@ import os
 from transformers import pipeline
 from tqdm import tqdm
 import pandas as pd
+import torch
 import numpy as np
 from loguru import logger
 import fetch_data
-GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large")
+GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large", device=0) # Added cuda.
 dataset_version = "v17-01-2025" # Versioning of dataset.
 
 DATASET_NAME_TO_PATH = {
@@ -39,7 +40,7 @@ def format_all_datasets(read_from_existing = None):
     concatenated_df = pd.concat(all_dataframes, ignore_index=True)
     concatenated_df.reset_index(drop=True, inplace=True)
     dataset_name = f"./data/full_data_{dataset_version}.csv"
-    concatenated_df.to_pickle(dataset_name, index=False)
+    concatenated_df.to_pickle(dataset_name)
     return concatenated_df
 
 def format_dataset(dataset_name):
@@ -246,6 +247,10 @@ def load_datasets_from_pickle(filename):
 
 
 if __name__ == '__main__':
+    if torch.cuda.is_available():
+        logger.debug("CUDA is available. Running on GPU:", torch.cuda.get_device_name(0))
+    else:
+        logger.debug("CUDA is not available. Running on CPU.")
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
         "--download_kaggle",
