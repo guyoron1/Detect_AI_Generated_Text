@@ -79,6 +79,7 @@ def format_persuade_to_df(path):
     df = pd.read_csv(path)
     df = df.rename(columns={'full_text':'essay_text','assignment':'prompt_text'})
     df = df[['prompt_name','prompt_text','essay_text']]
+    df.drop(columns=['prompt_name'], inplace=True)  # Drop the 'prompt_name' column
     df['generated'] = 0
     df['source'] = 'persuade'
     return df
@@ -245,6 +246,23 @@ def load_datasets_from_pickle(filename):
     unpickled_df = pd.read_pickle(path)
     return unpickled_df
 
+def merge_dataframes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merges two DataFrames with the same structure into one.
+    Ensures a seamless concatenation for fine-tuning purposes.
+
+    Args:
+        df1 (pd.DataFrame): The first DataFrame.
+        df2 (pd.DataFrame): The second DataFrame.
+
+    Returns:
+        pd.DataFrame: A single DataFrame containing all rows from both inputs.
+    """
+    merged_df = pd.concat([df1, df2], ignore_index=True)
+    return merged_df
+
+
+
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
@@ -275,9 +293,19 @@ if __name__ == '__main__':
     df = format_persuade_to_df(fetch_data.PERSUADE_DATA_PATH)
 
     # Filter 5,000 random samples
-    filtered_df = df.sample(n=5000, random_state=42)
+    filtered_persuade_df = df.sample(n=5000, random_state=42)
 
     # Save to a new file
-    filtered_df.to_csv("./external_sources/persuade/filtered_persuade_data.csv", index=False)
+    filtered_persuade_df.to_csv("./external_sources/persuade/filtered_persuade_data.csv", index=False)
     print("Filtered data saved to './external_sources/persuade/filtered_persuade_data.csv''")
     #format_all_datasets()
+
+    # Example usage:
+    # Assuming `df1` and `df2` are the two DataFrames you want to merge
+    merged_df = merge_dataframes(sampled_generated_essays_df, filtered_persuade_df)
+
+    # Save the merged dataset for fine-tuning
+    merged_df.to_csv("./data/merged_fine_tuning_data.csv", index=False)
+    print("Merged DataFrame saved to './data/merged_fine_tuning_data.csv'")
+
+
