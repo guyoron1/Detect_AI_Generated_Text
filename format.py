@@ -12,8 +12,8 @@ GLOBAL_PIPE = pipeline("text2text-generation", model="google/flan-t5-large")
 dataset_version = "v17-01-2025" # Versioning of dataset.
 
 DATASET_NAME_TO_PATH = {
-    #'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
-    #'persuade': './external_sources/persuade/persuade_corpus_2.0_train.csv',
+    'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
+    'persuade': './external_sources/persuade/persuade_corpus_2.0_train.csv',
     'fpe': './external_sources/fpe'
 }
 
@@ -38,8 +38,9 @@ def format_all_datasets(read_from_existing = None):
         all_dataframes.append(df)
     concatenated_df = pd.concat(all_dataframes, ignore_index=True)
     concatenated_df.reset_index(drop=True, inplace=True)
-    dataset_name = f"./data/full_data_{dataset_version}.csv"
-    concatenated_df.to_pickle(dataset_name, index=False)
+    joined_dataset_names = '-'.join(DATASET_NAME_TO_PATH.keys())
+    dataset_name = f"./data/training_data_version_{dataset_version}_sources_{joined_dataset_names}.pickle"
+    concatenated_df.to_pickle(dataset_name)
     return concatenated_df
 
 def format_dataset(dataset_name):
@@ -159,6 +160,27 @@ def add_prompts(df: pd.DataFrame, batch_size: int = 8):
 
     return df
 
+def filter_and_sample_merged_df(df:pd.DataFrame, sample_size=10_000):
+    only_generated_df = df[
+        (df['generated'] == 1) &  # Only generated essays
+        (df['prompt_text'].notnull()) &  # Remove rows with NaN in 'prompt_text'
+        (df['prompt_text'].str.strip() != "")  # Remove rows with blank/empty prompt_text
+        ]
+    only_student_df = df[
+        (df['generated'] == 0) &  # Only student essays
+        (df['prompt_text'].notnull()) &  # Remove rows with NaN in 'prompt_text'
+        (df['prompt_text'].str.strip() != "")  # Remove rows with blank/empty prompt_text
+        ]
+
+    num_samples = min(sample_size, len(only_generated_df),len(only_student_df))
+    only_generated_df = only_generated_df.sample(n=num_samples, random_state=71)
+    only_student_df = only_student_df.sample(n=num_samples, random_state=71)
+
+    merged_filtered_df = pd.concat([only_generated_df, only_student_df]).sample(frac=1, random_state=71).reset_index(drop=True)
+
+    return merged_filtered_df
+
+
 
 def generate_prompts_for_texts(texts, pipe, max_input_tokens=512, batch_size=16):
     """
@@ -242,24 +264,24 @@ def sample_by_percentages(df: pd.DataFrame, percentages: dict) -> pd.DataFrame:
 
 
 def load_datasets_from_pickle(filename):
-    path = f"./data/{filename}.csv"
+    path = f"./data/{filename}.pickle"
     unpickled_df = pd.read_pickle(path)
     return unpickled_df
 
-def merge_dataframes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merges two DataFrames with the same structure into one.
-    Ensures a seamless concatenation for fine-tuning purposes.
-
-    Args:
-        df1 (pd.DataFrame): The first DataFrame.
-        df2 (pd.DataFrame): The second DataFrame.
-
-    Returns:
-        pd.DataFrame: A single DataFrame containing all rows from both inputs.
-    """
-    merged_df = pd.concat([df1, df2], ignore_index=True)
-    return merged_df
+# def merge_dataframes(df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
+#     """
+#     Merges two DataFrames with the same structure into one.
+#     Ensures a seamless concatenation for fine-tuning purposes.
+#
+#     Args:
+#         df1 (pd.DataFrame): The first DataFrame.
+#         df2 (pd.DataFrame): The second DataFrame.
+#
+#     Returns:
+#         pd.DataFrame: A single DataFrame containing all rows from both inputs.
+#     """
+#     merged_df = pd.concat([df1, df2], ignore_index=True)
+#     return merged_df
 
 
 
@@ -275,37 +297,4 @@ if __name__ == '__main__':
     if args.download_kaggle:
         fetch_data.download_all_kaggle_datasets()
 
-    formatted_fpe_df = format_fpe_to_df('./external_sources/fpe')
-    formatted_fpe_df.to_csv("./data/formatted_fpe_data.csv", index=False)
-    # Step 1: Filter for generated essays and ensure prompt_text is not empty or blank
-    generated_essays_df = formatted_fpe_df[
-        (formatted_fpe_df['generated'] == 1) &  # Only generated essays
-        (formatted_fpe_df['prompt_text'].notnull()) &  # Remove rows with NaN in 'prompt_text'
-        (formatted_fpe_df['prompt_text'].str.strip() != "")  # Remove rows with blank/empty prompt_text
-        ]
-    # Step 2: Randomly sample 10,000 rows (or fewer if there aren't enough)
-    num_samples = min(10000, len(generated_essays_df))
-    sampled_generated_essays_df = generated_essays_df.sample(n=num_samples, random_state=42)
-
-    # Step 3: Save the filtered dataset to a new file (optional)
-    sampled_generated_essays_df.to_csv("./data/filtered_generated_essays_with_prompt.csv", index=False)
-
-    df = format_persuade_to_df(fetch_data.PERSUADE_DATA_PATH)
-
-    # Filter 5,000 random samples
-    filtered_persuade_df = df.sample(n=5000, random_state=42)
-
-    # Save to a new file
-    filtered_persuade_df.to_csv("./external_sources/persuade/filtered_persuade_data.csv", index=False)
-    print("Filtered data saved to './external_sources/persuade/filtered_persuade_data.csv''")
-    #format_all_datasets()
-
-    # Example usage:
-    # Assuming `df1` and `df2` are the two DataFrames you want to merge
-    merged_df = merge_dataframes(sampled_generated_essays_df, filtered_persuade_df)
-
-    # Save the merged dataset for fine-tuning
-    merged_df.to_csv("./data/merged_fine_tuning_data.csv", index=False)
-    print("Merged DataFrame saved to './data/merged_fine_tuning_data.csv'")
-
-
+    format_all_datasets()
