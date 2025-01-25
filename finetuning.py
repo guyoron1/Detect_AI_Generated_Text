@@ -223,7 +223,7 @@ if __name__ == '__main__':
     )
     args = argparser.parse_args()
     sources = args.sources
-    sample_size = 1000
+    sample_size = 10000
     # Loading and formatting training data.
     if args.load_dataset_from_path:
         data_in_df_format = pd.read_pickle(args.load_from_path)
@@ -245,4 +245,4 @@ if __name__ == '__main__':
     test_set = write_classifier_format(pull_kaggle_test_set(), output_path=test_output_path)
     path_to_model = args.path_to_model if args.path_to_model else model_output_dir
     results = inference(test_set, path_to_model)
-    logger.debug(f"Loss is: {results}")
+    logger.debug(f"Average loss on test set is: {results}.")

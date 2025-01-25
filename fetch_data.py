@@ -100,7 +100,7 @@ def download_file_with_progress(url, output_path):
                 pbar.update(len(data))  # Update the progress bar
 
 def map_prompt_name_to_prompt_text_persuade():
-    datapath = os.path.join(PERSUADE_DATA_PATH, "persuade_corpus_2.0_train.csv")
+    datapath = PERSUADE_DATA_PATH
     df = pd.read_csv(datapath)
     mapping_dict = df.drop_duplicates().set_index("prompt_name")["assignment"].to_dict()
     return mapping_dict
