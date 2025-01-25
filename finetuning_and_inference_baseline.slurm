@@ -11,6 +11,7 @@
 #SBATCH --mem=50000 # CPU memory (MB)
 #SBATCH --cpus-per-task=4 # CPU cores per process
 #SBATCH --gpus=1 # GPUs in total
+#SBATCH --gres=gpu:1
 
 export HF_HOME=/home/tkoren/mldaw2425/imryziv/huggingface_cache # Disk quota in regular home is exceeded
 
