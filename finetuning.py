@@ -92,6 +92,9 @@ def finetune(dataset_df: pd.DataFrame,
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)  # Replace `2` with your number of classes
     logger.debug("Loaded tokenizer and model successfully.")
+    if torch.cuda.is_available():
+        model = model.to("cuda")
+        logger.debug("Model moved to GPU.")
 
     dataset = Dataset.from_pandas(dataset_df)
     dataset = dataset.train_test_split(test_size=0.2, seed=42)
