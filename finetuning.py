@@ -105,12 +105,10 @@ def finetune(dataset_df: pd.DataFrame,
         # Tokenize the inputs and create attention masks
         inputs = tokenizer(examples["input"], truncation=True, padding=True, max_length=128)
         labels = examples["label"]
-        print(labels)
         return inputs
 
     tokenized_dataset = dataset.map(preprocess_function, batched=True)
     logger.debug("Dataset tokenized successfully.")
-    print(tokenized_dataset["train"][0])  # Check the structure
     training_args = TrainingArguments(
         output_dir="./results",
         evaluation_strategy="epoch",
@@ -224,27 +222,33 @@ if __name__ == '__main__':
         type=str,
         help='If you want to perform inference on a model that was already finetuned, insert path to it here.'
     )
+    argparser.add_argument(
+        '--sample_size',
+        type=int,
+        default=10000
+    )
     args = argparser.parse_args()
     sources = args.sources
-    sample_size = 10000
     # Loading and formatting training data.
     if args.load_dataset_from_path:
         data_in_df_format = pd.read_pickle(args.load_from_path)
     else:
-        data_in_df_format = merge_data_for_finetuning(sources, sample_size=sample_size)
-    output_path = f"./data/training_data_version_{dataset_version}_size_{sample_size}_sources_{'-'.join(sources)}"
+        data_in_df_format = merge_data_for_finetuning(sources, sample_size=args.sample_size)
+        print()
+    output_path = f"./data/training_data_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
     if args.save_dataset:
         data_in_df_format.to_pickle(f"{output_path}.pickle")
+        counts = data_in_df_format['generated'].value_counts()
     classifier_input_data = write_classifier_format(data_in_df_format,output_path,args.save_dataset)
 
     # Perform finetuning.
     logger.debug("Loaded and saved datasets successfuly. Performing finetuning.")
-    model_output_dir = f"./models/modelname_{args.base_model}_version_{dataset_version}_sources_{'-'.join(sources)}"
+    model_output_dir = f"./models/modelname_{args.base_model}_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
     finetune(classifier_input_data,model_name=args.base_model, output_dir=model_output_dir)
 
     # Perform inference.
     logger.debug("Finetuning successful. Performing inference.")
-    test_output_path = f"./data/test_data_version_{dataset_version}_size_{sample_size}_sources_{'-'.join(sources)}"
+    test_output_path = f"./data/test_data_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
     test_set = write_classifier_format(pull_kaggle_test_set(), output_path=test_output_path)
     path_to_model = args.path_to_model if args.path_to_model else model_output_dir
     results = inference(test_set, path_to_model)
