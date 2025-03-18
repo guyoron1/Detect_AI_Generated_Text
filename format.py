@@ -222,8 +222,8 @@ def generate_prompts_for_texts(texts, pipe, max_input_tokens=512, batch_size=16)
     generated = pipe(
         truncated_inputs,
         num_return_sequences=1,
-        do_sample=False,
-        temperature=0.3,
+        do_sample=True,
+        temperature=0.8,
         batch_size=batch_size,
     )
 
