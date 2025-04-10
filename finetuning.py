@@ -11,19 +11,29 @@ import format
 from torch.utils.data import DataLoader
 
 from format import DATASET_NAME_TO_PATH, dataset_version
+
+TRAIN_GENERATED_PERCENTAGE = 0.5
 # .pt
 
 # Data file will be called "train_v160125.pickle"
 # Identify modelname saved after finetuning by same version.
 
 
-def merge_data_for_finetuning(sources:List[str], sample_size:int):
+def merge_data_for_finetuning(sources: List[str], sample_size: int, generated_percentage: float):
     """
     Sources can be what was implemented in format (assert takes care of that).
+    Args:
+        sources (List[str]): List of data sources (e.g., 'fpe', 'daigt', 'persuade').
+        sample_size (int): Total number of samples in the final dataset.
+        generated_percentage (float): The percentage of generated essays (1's) in the dataset.
     """
     list_of_dfs_to_merge = []
+
+    # Validate sources
     for source in sources:
         assert source in DATASET_NAME_TO_PATH.keys()
+
+    # Load and append data from each source
     for source in sources:
         path = DATASET_NAME_TO_PATH[source]
         if source == 'fpe':
@@ -33,14 +43,39 @@ def merge_data_for_finetuning(sources:List[str], sample_size:int):
         elif source == 'persuade':
             df = format.format_persuade_to_df(path)
         else:
-            raise Exception(f"Unrecognized data source/")
+            raise Exception(f"Unrecognized data source {source}")
+
         list_of_dfs_to_merge.append(df)
 
-    merged_data = pd.concat(list_of_dfs_to_merge,ignore_index=True) # todo: add sampling mechanism (percentages) in merge.
-    merged_filtered_sampled_data = format.filter_and_sample_merged_df(merged_data, sample_size)
-    return merged_filtered_sampled_data
+    # Merge all dataframes
+    merged_data = pd.concat(list_of_dfs_to_merge, ignore_index=True)
 
+    # Calculate how many generated (1) and non-generated (0) essays are needed
+    total_generated = int(sample_size * generated_percentage)
+    total_non_generated = sample_size - total_generated
 
+    # Separate generated (1) and non-generated (0) essays
+    generated_data = merged_data[merged_data['generated'] == 1]
+    non_generated_data = merged_data[merged_data['generated'] == 0]
+
+    # If there aren't enough generated or non-generated instances, sample the available data
+    if len(generated_data) < total_generated:
+        generated_sample = generated_data.sample(n=len(generated_data), replace=True)
+    else:
+        generated_sample = generated_data.sample(n=total_generated)
+
+    if len(non_generated_data) < total_non_generated:
+        non_generated_sample = non_generated_data.sample(n=len(non_generated_data), replace=True)
+    else:
+        non_generated_sample = non_generated_data.sample(n=total_non_generated)
+
+    # Concatenate the sampled data to create the final dataset
+    sampled_data = pd.concat([generated_sample, non_generated_sample], ignore_index=True)
+
+    # Shuffle the data so that the generated/non-generated labels are mixed
+    sampled_data = sampled_data.sample(frac=1, random_state=42).reset_index(drop=True)
+
+    return sampled_data
 
 def write_classifier_format(dataset: pd.DataFrame, output_path: str, write_json=False):
     """
@@ -77,7 +112,7 @@ def pull_kaggle_test_set():
 def finetune(dataset_df: pd.DataFrame,
              model_name: str,
              output_dir: str,
-             epochs: int = 3,
+             epochs: int = 2,
              batch_size: int = 8,
              access_token=None,
 ):
@@ -112,11 +147,11 @@ def finetune(dataset_df: pd.DataFrame,
     training_args = TrainingArguments(
         output_dir="./results",
         evaluation_strategy="epoch",
-        learning_rate=5e-5,
+        learning_rate=2e-5,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         num_train_epochs=epochs,
-        weight_decay=0.01,
+        weight_decay=0.1,
         save_strategy="epoch",
         load_best_model_at_end=True,
         logging_dir=f"{output_dir}/logs",
@@ -227,14 +262,23 @@ if __name__ == '__main__':
         type=int,
         default=10000
     )
+
+
     args = argparser.parse_args()
     sources = args.sources
     # Loading and formatting training data.
     if args.load_dataset_from_path:
         data_in_df_format = pd.read_pickle(args.load_from_path)
     else:
-        data_in_df_format = merge_data_for_finetuning(sources, sample_size=args.sample_size)
+        data_in_df_format = merge_data_for_finetuning(sources, sample_size=args.sample_size, generated_percentage=TRAIN_GENERATED_PERCENTAGE)
         print()
+
+        # Log the number of ones and zeros in the 'generated' column
+    ones_count = data_in_df_format['generated'].sum()
+    zeros_count = len(data_in_df_format) - ones_count
+
+    logger.debug(f"Generated column - Ones: {ones_count}, Zeros: {zeros_count}")
+
     output_path = f"./data/training_data_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
     if args.save_dataset:
         data_in_df_format.to_pickle(f"{output_path}.pickle")

@@ -24,32 +24,38 @@ KAGGLE_DATASETS = [
 DATASET_NAME_TO_PROMPT_EXISTENCE = {
     "daigt": True,
 }
-
 def fetch_llm_data_outfox():
     """
     Fetch only the LLM-generated essays from Outfox.
-    Returns dictionary with keys test, train and validation and dataframe for each key.
+    Returns a single DataFrame containing all essays.
+    Assumes each pkl file contains a list of essays (strings or dicts).
     """
     OUTFOX_LLM_SOURCES = (
-        'chatgpt','common',
+        'chatgpt', 'common',
         'dipper\\chatgpt',
         'dipper\\flan_t5_xxl',
         'dipper\\text_davinci_003',
         'flan_t5_xxl',
         'text_davinci_003'
     )
-    data_list = []
+
+    all_essays = []
     for source in OUTFOX_LLM_SOURCES:
-        for type in DATASET_TYPES:
-            path = os.path.join(OUTFOX_DATA_PATH, source, type, f"{type}_lms.pkl")
+        for dtype in DATASET_TYPES:
+            path = os.path.join(OUTFOX_DATA_PATH, source, dtype, f"{dtype}_lms.pkl")
             try:
                 with open(path, 'rb') as file:
                     data = pickle.load(file)
+                    if isinstance(data, list):
+                        all_essays.extend(data)
+                    elif isinstance(data, pd.DataFrame):
+                        all_essays.extend(data.to_dict(orient='records'))
+                    else:
+                        print(f"Unknown format in {path}")
             except FileNotFoundError:
                 continue
-            data_list.append(data)
 
-    return data_list
+    return pd.DataFrame(all_essays)
 
 
 def download_kaggle_dataset(dataset_url_or_identifier: str, download_path: str):
