@@ -42,6 +42,8 @@ def merge_data_for_finetuning(sources: List[str], sample_size: int, generated_pe
             df = format.format_daigt_to_df(path)
         elif source == 'persuade':
             df = format.format_persuade_to_df(path)
+        elif source == 'outfox':
+            df = format.format_outfox_to_df(path)
         else:
             raise Exception(f"Unrecognized data source {source}")
 

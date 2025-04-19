@@ -14,7 +14,8 @@ dataset_version = "v10-04-2025" # Versioning of dataset.
 DATASET_NAME_TO_PATH = {
     'daigt': './external_sources/daigt/train_v2_drcat_02.csv',
     'persuade': './external_sources/persuade/persuade_corpus_2.0_train.csv',
-    'fpe': './external_sources/fpe'
+    'fpe': './external_sources/fpe',
+    'outfox': './external_sources/outfox/data'
 }
 
 REQUIRED_COLS = (
@@ -62,7 +63,8 @@ def dataset_to_pandas(dataset_name, path):
         df = format_persuade_to_df(path)
     elif dataset_name == 'fpe':
         df = format_fpe_to_df(path)
-
+    elif dataset_name == 'outfox':
+        df = format_outfox_to_df(path)
     df = df.drop_duplicates(subset='essay_text')
     return df
 
@@ -85,6 +87,42 @@ def format_persuade_to_df(path):
     df['source'] = 'persuade'
     return df
 
+
+def format_outfox_to_df(path):
+    """
+    Path consists of "chatgpt", "common"... different LLM generators.
+    Will only use 'chatgpt', 'flan' and 'davinci' for now, as LLM generated.
+    """
+    llm_pkl_files_train = []
+    master_df = pd.DataFrame(columns=['prompt_text', 'essay_text', 'generated'])
+    problem_statements = pd.read_pickle(f"{path}/common/train/train_problem_statements.pkl")
+    human_responses = pd.read_pickle(f"{path}/common/train/train_humans.pkl")
+    for dirpath, dirnames, filenames in os.walk(path):
+        if 'common' in dirpath:
+            continue
+        print('a')
+        for filename in filenames:
+            print('a')
+            if filename == 'train_lms.pkl':
+                full_path = os.path.join(dirpath, filename)
+                llm_pkl_files_train.append(full_path)
+    for pkl in llm_pkl_files_train:
+        curr_list = pd.read_pickle(pkl)
+        curr_df = df = pd.DataFrame({
+            'prompt_text': problem_statements,
+            'essay_text': curr_list,
+            'generated': 1  # or '1' as a string, if you prefer
+        })
+        master_df = pd.concat([master_df,df], ignore_index=True)
+
+    # Adding human responses with other label.
+    df_human = pd.DataFrame({
+        'prompt_text': problem_statements,
+        'essay_text': human_responses,
+        'generated': 0
+    })
+    master_df = pd.concat([master_df, df_human], ignore_index=True)
+    return master_df
 
 def format_fpe_to_df(path):
     dataframes = {}

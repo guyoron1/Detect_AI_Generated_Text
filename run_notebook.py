@@ -8,7 +8,7 @@ version = "v10-04-2025"
 finetune_size = 5000
 sources = ['fpe', 'persuade']
 test_size = 700
-TEST_GENERATED_PERCENTAGE = 0.5
+TEST_GENERATED_PERCENTAGE = 0.5 # This is based on our coin-toss model submitted to Kaggle - test distribution is 50-50 over labels.ס
 ft_model_path = f"./models/modelname_{baseline_model}_version_{version}_size_{finetune_size}_sources_{'-'.join(sources)}"
 baseline_model_path = f"./models/{baseline_model}"
 
@@ -84,6 +84,9 @@ def main():
 
     generated_prompts = format.generate_prompts_for_texts(example_essays, format.GLOBAL_PIPE, batch_size=1)
     print(generated_prompts)
+
+def trying_out_generating_prompts():
+    df = format.format_dataset('')
 
 if __name__ == '__main__':
     main()
