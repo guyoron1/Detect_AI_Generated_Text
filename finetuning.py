@@ -1,6 +1,5 @@
 import argparse
 import torch
-from fetch_data import download_kaggle_dataset
 import pandas as pd
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 from datasets import load_dataset, Dataset
@@ -117,7 +116,7 @@ def finetune(dataset_df: pd.DataFrame,
              epochs: int = 2,
              batch_size: int = 8,
              access_token=None,
-):
+             device: str = 'cuda'):
     """
     Receives dataset as dataframe.
     Assumes model is naturally classifier.
@@ -125,13 +124,10 @@ def finetune(dataset_df: pd.DataFrame,
     """
     # Load tokenizer and model
     logger.debug("Loading tokenizer and model.")
-
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)  # Replace `2` with your number of classes
-    logger.debug("Loaded tokenizer and model successfully.")
-    if torch.cuda.is_available():
-        model = model.to("cuda")
-        logger.debug("Model moved to GPU.")
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+    model = model.to(device)
+    logger.debug(f"Model moved to {device.upper()}.") # If cuda is available and 'gpu' was passed as argument.
 
     dataset = Dataset.from_pandas(dataset_df)
     dataset = dataset.train_test_split(test_size=0.2, seed=42)
@@ -173,23 +169,27 @@ def finetune(dataset_df: pd.DataFrame,
     trainer.train()
     trainer.save_model(f"{output_dir}")
 
-
-def inference(test_set: pd.DataFrame, model_path: str):
+def inference(test_set: pd.DataFrame, model_path: str, baseline_model: str):
     """
-    Perform inference using a fine-tuned DistilBERT classifier model and compute the loss.
-
+    Perform inference using a fine-tuned classifier model and compute the loss.
+    Compare loss to what is achieved with the baseline model without finetuning.
     Args:
         test_set (pd.DataFrame): DataFrame containing the test data.
                                  It must have 'input' and 'label' columns.
         model_path (str): Path to the fine-tuned model.
+        baseline_model (str): Path to the baseline model (non-finetuned).
 
     Returns:
-        float: Computed loss on the test set.
+        dict: A dictionary containing the loss for both models ('fine_tuned_loss' and 'baseline_loss').
     """
-    # Load the tokenizer and model from the specified path
+    # Load the tokenizer and model from the fine-tuned model path
     tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForSequenceClassification.from_pretrained(model_path)
-    model.eval()  # Set the model to evaluation mode
+    fine_tuned_model = AutoModelForSequenceClassification.from_pretrained(model_path)
+    fine_tuned_model.eval()  # Set the model to evaluation mode
+
+    # Load the baseline model (non-finetuned)
+    baseline_model = AutoModelForSequenceClassification.from_pretrained(baseline_model)
+    baseline_model.eval()  # Set the model to evaluation mode
 
     # Convert the test set DataFrame to a HuggingFace Dataset
     dataset = Dataset.from_pandas(test_set)
@@ -207,28 +207,27 @@ def inference(test_set: pd.DataFrame, model_path: str):
         "labels": torch.tensor([item["label"] for item in x]),
     })
 
-    total_loss = 0.0
-    total_samples = 0
+    def compute_loss(model, test_loader):
+        total_loss = 0.0
+        total_samples = 0
+        with torch.no_grad():
+            for batch in test_loader:
+                inputs = {
+                    "input_ids": batch["input_ids"].to(model.device),
+                    "attention_mask": batch["attention_mask"].to(model.device),
+                    "labels": batch["labels"].to(model.device),
+                }
+                outputs = model(**inputs)
+                loss = outputs.loss  # Cross-entropy loss
+                total_loss += loss.item() * len(inputs["labels"])  # Multiply by batch size
+                total_samples += len(inputs["labels"])
+        return total_loss / total_samples
 
-    # Perform inference
-    with torch.no_grad():
-        for batch in test_loader:
-            inputs = {
-                "input_ids": batch["input_ids"].to(model.device),
-                "attention_mask": batch["attention_mask"].to(model.device),
-                "labels": batch["labels"].to(model.device),
-            }
+    # Compute loss for both fine-tuned and baseline models
+    fine_tuned_loss = compute_loss(fine_tuned_model, test_loader)
+    baseline_loss = compute_loss(baseline_model, test_loader)
 
-            # Forward pass
-            outputs = model(**inputs)
-            loss = outputs.loss  # Cross-entropy loss
-            total_loss += loss.item() * len(inputs["labels"])  # Multiply by batch size
-            total_samples += len(inputs["labels"])
-
-    # Compute the average loss
-    average_loss = total_loss / total_samples
-
-    return average_loss
+    return (fine_tuned_loss, baseline_loss)
 
 
 if __name__ == '__main__':
@@ -265,6 +264,13 @@ if __name__ == '__main__':
         default=10000
     )
 
+    argparser.add_argument(
+        '--device',
+        type=str,
+        default='cuda' if torch.cuda.is_available() else 'cpu',
+        choices=['cpu', 'cuda'],
+        help='Choose whether to use CPU or GPU (cuda). Defaults to GPU if available.'
+    )
 
     args = argparser.parse_args()
     sources = args.sources
@@ -286,16 +292,18 @@ if __name__ == '__main__':
         data_in_df_format.to_pickle(f"{output_path}.pickle")
         counts = data_in_df_format['generated'].value_counts()
     classifier_input_data = write_classifier_format(data_in_df_format,output_path,args.save_dataset)
-
-    # Perform finetuning.
-    logger.debug("Loaded and saved datasets successfuly. Performing finetuning.")
-    model_output_dir = f"./models/modelname_{args.base_model}_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
-    finetune(classifier_input_data,model_name=args.base_model, output_dir=model_output_dir)
+    if not args.path_to_model:
+        # Perform finetuning.
+        logger.debug("Loaded and saved datasets successfuly. Performing finetuning.")
+        model_output_dir = f"./models/modelname_{args.base_model}_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
+        finetune(classifier_input_data,model_name=args.base_model, output_dir=model_output_dir)
 
     # Perform inference.
     logger.debug("Finetuning successful. Performing inference.")
     test_output_path = f"./data/test_data_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
     test_set = write_classifier_format(pull_kaggle_test_set(), output_path=test_output_path)
     path_to_model = args.path_to_model if args.path_to_model else model_output_dir
-    results = inference(test_set, path_to_model)
-    logger.debug(f"Average loss on test set is: {results}.")
+    finetuned_loss, baseline_loss = inference(test_set, path_to_model, args.base_model)
+    logger.debug(f"Average loss achieved by finetuned model: {finetuned_loss}")
+    logger.debug(f"Average loss achieved by baseline model: {baseline_loss}")
+
