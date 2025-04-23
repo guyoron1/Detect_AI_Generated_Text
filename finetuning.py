@@ -170,7 +170,7 @@ def finetune(dataset_df: pd.DataFrame,
     trainer.train()
     trainer.save_model(f"{output_dir}")
 
-def inference(test_set: pd.DataFrame, model_path: str, baseline_model: str):
+def inference(test_set: pd.DataFrame, model_path: str, baseline_model: str, device:str):
     """
     Perform inference using a fine-tuned classifier model and compute the loss.
     Compare loss to what is achieved with the baseline model without finetuning.
@@ -186,10 +186,15 @@ def inference(test_set: pd.DataFrame, model_path: str, baseline_model: str):
     # Load the tokenizer and model from the fine-tuned model path
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     fine_tuned_model = AutoModelForSequenceClassification.from_pretrained(model_path)
-    fine_tuned_model.eval()  # Set the model to evaluation mode
-
-    # Load the baseline model (non-finetuned)
     baseline_model = AutoModelForSequenceClassification.from_pretrained(baseline_model)
+
+    if device == 'cuda':
+        fine_tuned_model = fine_tuned_model.to(device)
+        baseline_model = baseline_model.to(device)
+        logger.debug(f"Models moved to {device.upper()}.")  # If cuda is available and 'gpu' was passed as argument.
+
+
+    fine_tuned_model.eval()  # Set the model to evaluation mode
     baseline_model.eval()  # Set the model to evaluation mode
 
     # Convert the test set DataFrame to a HuggingFace Dataset
