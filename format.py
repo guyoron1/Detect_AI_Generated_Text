@@ -100,9 +100,7 @@ def format_outfox_to_df(path):
     for dirpath, dirnames, filenames in os.walk(path):
         if 'common' in dirpath:
             continue
-        print('a')
         for filename in filenames:
-            print('a')
             if filename == 'train_lms.pkl':
                 full_path = os.path.join(dirpath, filename)
                 llm_pkl_files_train.append(full_path)

@@ -8,7 +8,7 @@ import pandas as pd
 DATASET_TYPES = ('train', 'test', 'valid')
 HOME = os.getcwd()
 PERSUADE_DATA_PATH = './external_sources/persuade/persuade_corpus_2.0_train.csv'
-OUTFOX_DATA_PATH = os.path.join(HOME, "external_sources/OUTFOX/data/")
+OUTFOX_DATA_PATH = os.path.join(HOME, "external_sources/outfox/data/")
 KAGGLE_DATASETS = [
     {
         "url_or_identifier": "https://www.kaggle.com/datasets/conjuring92/fpe-processed-dataset",
