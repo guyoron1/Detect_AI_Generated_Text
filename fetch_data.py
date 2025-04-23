@@ -1,6 +1,5 @@
 import pickle
 import os
-import kaggle
 import requests
 from tqdm import tqdm
 from loguru import logger
@@ -77,6 +76,7 @@ def download_kaggle_dataset(dataset_url_or_identifier: str, download_path: str):
 
     try:
         # Use the Kaggle API to download the dataset
+        import kaggle
         kaggle.api.dataset_download_files(dataset_identifier, path=download_path, unzip=True)
         print(f"Dataset downloaded and extracted to {download_path}")
     except kaggle.rest.ApiException as e:
