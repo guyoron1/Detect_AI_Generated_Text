@@ -309,7 +309,7 @@ if __name__ == '__main__':
     test_output_path = f"./data/test_data_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
     test_set = write_classifier_format(pull_kaggle_test_set(), output_path=test_output_path)
     path_to_model = args.path_to_model if args.path_to_model else model_output_dir
-    finetuned_loss, baseline_loss = inference(test_set, path_to_model, args.base_model)
+    finetuned_loss, baseline_loss = inference(test_set, path_to_model, args.base_model, device=args.device)
     logger.debug(f"Average loss achieved by finetuned model: {finetuned_loss}")
     logger.debug(f"Average loss achieved by baseline model: {baseline_loss}")
 
