@@ -126,8 +126,9 @@ def finetune(dataset_df: pd.DataFrame,
     logger.debug("Loading tokenizer and model.")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
-    model = model.to(device)
-    logger.debug(f"Model moved to {device.upper()}.") # If cuda is available and 'gpu' was passed as argument.
+    if device == 'cuda':
+        model = model.to(device)
+        logger.debug(f"Model moved to {device.upper()}.") # If cuda is available and 'gpu' was passed as argument.
 
     dataset = Dataset.from_pandas(dataset_df)
     dataset = dataset.train_test_split(test_size=0.2, seed=42)
@@ -144,7 +145,6 @@ def finetune(dataset_df: pd.DataFrame,
     logger.debug("Dataset tokenized successfully.")
     training_args = TrainingArguments(
         output_dir="./results",
-        evaluation_strategy="epoch",
         learning_rate=2e-5,
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
@@ -296,7 +296,7 @@ if __name__ == '__main__':
         # Perform finetuning.
         logger.debug("Loaded and saved datasets successfuly. Performing finetuning.")
         model_output_dir = f"./models/modelname_{args.base_model}_version_{dataset_version}_size_{args.sample_size}_sources_{'-'.join(sources)}"
-        finetune(classifier_input_data,model_name=args.base_model, output_dir=model_output_dir)
+        finetune(classifier_input_data,model_name=args.base_model, output_dir=model_output_dir, device=args.device)
 
     # Perform inference.
     logger.debug("Finetuning successful. Performing inference.")
