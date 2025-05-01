@@ -113,8 +113,8 @@ def pull_kaggle_test_set():
 def finetune(dataset_df: pd.DataFrame,
              model_name: str,
              output_dir: str,
-             epochs: int = 2,
-             batch_size: int = 8,
+             epochs: int = 4,
+             batch_size: int = 16,
              access_token=None,
              device: str = 'cuda'):
     """
@@ -146,10 +146,12 @@ def finetune(dataset_df: pd.DataFrame,
     training_args = TrainingArguments(
         output_dir="./results",
         learning_rate=2e-5,
+        warmup_steps=500,  # For example
+        lr_scheduler_type="linear",
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         num_train_epochs=epochs,
-        weight_decay=0.1,
+        weight_decay=0.01,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
