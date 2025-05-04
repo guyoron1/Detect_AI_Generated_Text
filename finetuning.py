@@ -114,7 +114,7 @@ def pull_kaggle_test_set():
 def finetune(dataset_df: pd.DataFrame,
              model_name: str,
              output_dir: str,
-             epochs: int = 4,
+             epochs: int = 2,
              batch_size: int = 16,
              access_token=None,
              device: str = 'cuda'):
