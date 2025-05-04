@@ -8,9 +8,10 @@ import json
 from typing import List
 import format
 from torch.utils.data import DataLoader
-
+import os
 from format import DATASET_NAME_TO_PATH, dataset_version
 
+os.environ["WANDB_DISABLED"] = "true"
 TRAIN_GENERATED_PERCENTAGE = 0.5
 # .pt
 
