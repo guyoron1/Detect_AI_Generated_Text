@@ -85,8 +85,6 @@ def main():
     generated_prompts = format.generate_prompts_for_texts(example_essays, format.GLOBAL_PIPE, batch_size=1)
     print(generated_prompts)
 
-def trying_out_generating_prompts():
-    df = format.format_dataset('')
 
 if __name__ == '__main__':
     main()
